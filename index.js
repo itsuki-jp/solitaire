@@ -43,7 +43,7 @@ class Board {
     this.symbols = ["♤", "♧", "♢", "♡"];
     this.nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     this.cardSize = { x: 35, y: 50 };
-
+    // Todo: waste削除,stockをdequeに変更
     this.waste = []; // 山札からひっくり返されたやつ
 
     this.stock = []; // 山札
