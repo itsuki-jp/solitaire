@@ -106,11 +106,11 @@ class Solitaire {
     this.cardSize = { x: 35, y: 50 };
 
     let cards = this.prepareCards();
-    this.stock = new Deque();
+    this.stock = new Deque(); // 山札
     for (let i = 0; i < cards.length; i++) {
       this.stock.addBack(cards[i]);
     }
-    this.nextStock = new Card("", "", this.cardSize);
+    this.nextStock = new Card("", "", this.cardSize, "");
     this.nextStock.setFaceUp();
     this.nextStock.setPos(
       this.padding.x,
@@ -119,6 +119,17 @@ class Solitaire {
 
     this.tableau = []; // 段差になってるやつ
     this.prepareTableau();
+
+    this.tableauBtm = []; // 段差のやつの，上に一枚もない場合
+    for (let i = 0; i < this.tableau.length; i++) {
+      const btm = new Card("E", "", this.cardSize, "");
+      btm.setPos(
+        this.padding.x + this.spaceBetweenCard * (i + 1),
+        this.padding.y
+      );
+      btm.setFaceUp();
+      this.tableauBtm.push(btm);
+    }
 
     this.foundation = []; // Aとかがおかれるやつ
     this.prepareFoundation();
@@ -146,7 +157,7 @@ class Solitaire {
         const card = this.stock.removeBack();
         card.setPos(
           this.padding.x + this.spaceBetweenCard * (i + 1),
-          this.padding.y + this.cardOverlap * j
+          this.padding.y + this.cardOverlap * (j - 1)
         );
         this.tableau[i].push(card);
       }
@@ -196,6 +207,7 @@ class Solitaire {
     return this.stock.getLength() === 0;
   }
   flip() {
+    if (this.stock.peekBack() === undefined) return;
     const cardTop = this.stock.removeFront();
     cardTop.setFaceDown();
     this.stock.addBack(cardTop);
@@ -209,8 +221,11 @@ class Solitaire {
   drawCards() {
     this.clearCanvas();
     // waste, stock, tableau, foundation;
-    this.drawCard(this.stock.peekFront());
+    if (this.stock.peekBack() !== undefined) {
+      this.drawCard(this.stock.peekFront());
+    }
     this.drawCard(this.nextStock);
+    this.drawCardSet(this.tableauBtm, "tableauBtm");
     this.drawCardSet(this.tableau, "tableau");
     this.drawCardSet(this.foundation, "foundation");
   }
@@ -232,6 +247,11 @@ class Solitaire {
     if (name === "foundation") {
       for (let i = 0; i < cardSet.length; i++) {
         this.drawCard(cardSet[i][cardSet[i].length - 1]);
+      }
+    }
+    if (name === "tableauBtm") {
+      for (let i = 0; i < cardSet.length; i++) {
+        this.drawCard(cardSet[i]);
       }
     }
   }
@@ -285,6 +305,8 @@ class Solitaire {
       } else {
         this.clickedData2 = clickedData;
         this.moveCard();
+        this.drawCards();
+        this.clearClicked();
       }
     });
   }
@@ -299,21 +321,31 @@ class Solitaire {
           return {
             obj: searching,
             type: "tableau",
-            index: { i: i, j: len - j - 1 },
+            idx: { i: i, j: len - j - 1 },
           };
         }
       }
     }
+    for (let i = 0; i < this.tableauBtm.length; i++) {
+      searching = this.tableauBtm[i];
+      if (searching.isCliked(cx, cy)) {
+        return {
+          obj: searching,
+          type: "tableauBtm",
+          idx: { i: i },
+        };
+      }
+    }
 
     searching = this.stock.peekFront();
-    if (searching.isCliked(cx, cy)) {
+    if (searching !== undefined && searching.isCliked(cx, cy)) {
       return { obj: searching, type: "stock" };
     }
 
     for (let i = 0; i < this.foundation.length; i++) {
       searching = this.foundation[i][this.foundation[i].length - 1];
       if (searching.isCliked(cx, cy)) {
-        return { obj: searching, type: "foundation", index: i };
+        return { obj: searching, type: "foundation", idx: { i: i } };
       }
     }
     searching = this.nextStock;
@@ -330,34 +362,115 @@ class Solitaire {
     const c2 = this.clickedData2;
     if (c1.type === "stock") {
       if (c2.type === "stock") {
-        this.clearClicked();
         return;
       }
       if (c2.type === "tableau") {
         // tableauの一番最後のカード以外がクリックされてた場合
-        if (this.tableau[c2.index.i].length !== c2.index.j + 1) {
-          this.clearClicked();
-          return;
+        if (this.tableau[c2.idx.i].length !== c2.idx.j + 1) {
+          // pass
         }
         // 色・数字の規則に当てはまらない場合
-        if (c1.obj.colour === c2.obj.colour || c1.obj.num + 1 !== c2.obj.num) {
-          this.clearClicked();
-          return;
+        else if (
+          c1.obj.colour === c2.obj.colour ||
+          c1.obj.num + 1 !== c2.obj.num
+        ) {
+          // pass
+        } else {
+          const posTemp = c2.obj.getPos();
+          this.moveFromStock(
+            this.tableau[c2.idx.i],
+            posTemp.x,
+            posTemp.y + this.cardOverlap
+          );
         }
-        const stockTop = this.stock.removeFront();
-        this.stock.peekFront().setFaceUp();
-        this.stock.length--;
-        stockTop.setFaceUp();
+      }
+      if (
+        c2.type === "tableauBtm" &&
+        c1.obj.num === this.nums[this.nums.length - 1]
+      ) {
         const posTemp = c2.obj.getPos();
-        stockTop.setPos(posTemp.x, posTemp.y + this.cardOverlap);
-        this.tableau[c2.index.i].push(stockTop);
-        this.drawCards();
-        this.clearClicked();
-        return;
+        this.moveFromStock(this.tableau[c2.idx.i], posTemp.x, posTemp.y);
       }
       if (c2.type === "foundation") {
+        if (
+          ((c1.obj.num === 1 && c2.obj.num === "") ||
+            c1.obj.num === c2.obj.num + 1) &&
+          c1.obj.symbol === c2.obj.symbol
+        ) {
+          const posTemp = c2.obj.getPos();
+          this.moveFromStock(this.foundation[c2.idx.i], posTemp.x, posTemp.y);
+        }
       }
     }
+    if (c1.type === "tableau") {
+      if (c2.type === "stock") {
+        return;
+      }
+      if (c2.type === "tableau") {
+        if (c1.obj.num + 1 === c2.obj.num && c1.obj.colour !== c2.obj.colour) {
+          if (c1.idx.j !== 0) {
+            this.tableau[c1.idx.i][c1.idx.j - 1].setFaceUp();
+          }
+          const c1Len = this.tableau[c1.idx.i].length;
+          const c2Len = this.tableau[c2.idx.i].length;
+          for (let j = 0; j < c1Len - c1.idx.j; j++) {
+            const card = this.tableau[c1.idx.i][c1.idx.j];
+            const posTemp = this.tableau[c2.idx.i][c2Len - 1 + j].getPos();
+            card.setPos(posTemp.x, posTemp.y + this.cardOverlap);
+            this.tableau[c2.idx.i].push(card);
+            this.tableau[c1.idx.i].splice(c1.idx.j, 1);
+          }
+        }
+      }
+      if (
+        c2.type === "tableauBtm" &&
+        c1.obj.num === this.nums[this.nums.length - 1]
+      ) {
+        if (c1.idx.j !== 0) {
+          this.tableau[c1.idx.i][c1.idx.j - 1].setFaceUp();
+        }
+        const c1Len = this.tableau[c1.idx.i].length;
+        const c2Len = this.tableau[c2.idx.i].length;
+        for (let j = 0; j < c1Len - c1.idx.j; j++) {
+          const card = this.tableau[c1.idx.i][c1.idx.j];
+          let posTemp = c2.obj.getPos();
+          posTemp.y -= this.cardOverlap;
+          if (j !== 0) {
+            posTemp = this.tableau[c2.idx.i][c2Len - 1 + j].getPos();
+          }
+          card.setPos(posTemp.x, posTemp.y + this.cardOverlap);
+          this.tableau[c2.idx.i].push(card);
+          this.tableau[c1.idx.i].splice(c1.idx.j, 1);
+        }
+      }
+      if (c2.type === "foundation") {
+        if (c1.obj.symbol !== c1.obj.symbol) return;
+        if (this.tableau[c1.idx.i].length !== c1.idx.j + 1) return;
+        if (
+          (c2.obj.num === "" && c1.obj.num === 1) ||
+          c1.obj.num === c2.obj.num + 1
+        ) {
+          // Move c1 to foundation
+          const card = this.tableau[c1.idx.i][c1.idx.j];
+          const posTemp = c2.obj.getPos();
+          card.setPos(posTemp.x, posTemp.y);
+          this.foundation[c2.idx.i].push(card);
+          this.tableau[c1.idx.i].splice(c1.idx.j, 1);
+          if (this.tableau[c1.idx.i].length !== 0) {
+            this.tableau[c1.idx.i][c1.idx.j - 1].setFaceUp();
+          }
+        }
+      }
+    }
+  }
+  moveFromStock(addTo, nx, ny) {
+    const stockTop = this.stock.removeFront();
+    if (this.stock.peekFront() !== undefined) {
+      this.stock.peekFront().setFaceUp();
+    }
+    stockTop.setFaceUp();
+    stockTop.setPos(nx, ny);
+    addTo.push(stockTop);
   }
 }
 
