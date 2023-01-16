@@ -103,8 +103,8 @@ class Solitaire {
       { symbol: "♢", colour: "red" },
       { symbol: "♡", colour: "red" },
     ];
-    // this.nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-    this.nums = [1, 2, 3, 4, 5, 6, 7, 8];
+    this.nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+    // this.nums = [1, 2, 3, 4, 5, 6, 7, 8];
     this.cardSize = { x: 35, y: 50 };
 
     let cards = this.prepareCards();
@@ -482,7 +482,7 @@ class Solitaire {
   }
 }
 
-function test() {
+function game() {
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   const spaceBetweenCard = 100;
@@ -496,8 +496,6 @@ function test() {
     padding
   );
   solitaire.clearCanvas();
-  solitaire.flip();
   solitaire.drawCards();
-  console.log(solitaire);
 }
-test();
+game();
