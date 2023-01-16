@@ -39,13 +39,13 @@ class Deque {
 }
 
 class Card {
-  constructor(symbol, num, size, colour, fillColour = "white") {
+  constructor(symbol, num, size, colour, fillTF = true) {
     this.symbol = symbol;
     this.num = num;
     this.size = size;
     this.colour = colour; // symbol の色
     this.faceUp = false;
-    this.fillColour = fillColour;
+    this.fillTF = fillTF;
   }
   setPos(x, y) {
     this.x = x;
@@ -124,7 +124,7 @@ class Solitaire {
 
     this.tableauBtm = []; // 段差のやつの，上に一枚もない場合
     for (let i = 0; i < this.tableau.length; i++) {
-      const btm = new Card("E", "", this.cardSize, "", "lightgreen");
+      const btm = new Card("E", "", this.cardSize, "", false);
       btm.setPos(
         this.padding.x + this.spaceBetweenCard * (i + 1),
         this.padding.y
@@ -172,11 +172,12 @@ class Solitaire {
         this.symbols[i].symbol,
         "",
         this.cardSize,
-        this.symbols[i].colour
+        this.symbols[i].colour,
+        false
       );
       foundation.setPos(
         this.padding.x + this.spaceBetweenCard * (7 + 1),
-        this.padding.y + this.cardSize.y * i
+        this.padding.y + this.cardSize.y * i + this.cardOverlap * i
       );
       foundation.setFaceUp();
       this.foundation.push([foundation]);
@@ -261,7 +262,12 @@ class Solitaire {
     this.ctx.beginPath();
     const cardPos = card.getPos();
 
-    this.ctx.fillStyle = card.fillColour;
+    this.ctx.setLineDash([]);
+    this.ctx.fillStyle = "white";
+    if(!card.fillTF){
+      this.ctx.setLineDash([6]);
+      this.ctx.fillStyle = "green";
+    }
     this.ctx.strokeStyle = "black";
     this.ctx.rect(cardPos.x, cardPos.y, this.cardSize.x, this.cardSize.y);
     this.ctx.fill();
