@@ -264,7 +264,7 @@ class Solitaire {
 
     this.ctx.setLineDash([]);
     this.ctx.fillStyle = "white";
-    if(!card.fillTF){
+    if (!card.fillTF) {
       this.ctx.setLineDash([6]);
       this.ctx.fillStyle = "green";
     }
@@ -293,18 +293,31 @@ class Solitaire {
       canvasY = Math.floor(viewY / scaleHeight);
     return [canvasX, canvasY];
   }
+  // クリックしても移動しない場合があるため，現在何が選択されているかを出力
+  outPutClickedForDebug() {
+    console.log("clicked1:", this.clickedData1);
+    console.log("clicked2:", this.clickedData2);
+    console.log("--------------------------------------");
+  }
   clickSetUp() {
     this.canvas.addEventListener("click", (e) => {
       const [canvasX, canvasY] = this.getClickPos(e);
 
       const clickedData = this.searchClickedCard(canvasX, canvasY);
-      if (clickedData === undefined) return;
-      if (!clickedData.obj.isFaceUp()) return;
+      if (clickedData === undefined) {
+        this.outPutClickedForDebug();
+        return;
+      }
+      if (!clickedData.obj.isFaceUp()) {
+        this.outPutClickedForDebug();
+        return;
+      }
       console.log(clickedData.type, clickedData.obj);
 
       if (clickedData.type === "nextStock") {
         this.flip();
         this.clickedData1 = null;
+        this.outPutClickedForDebug();
         return;
       }
 
@@ -316,6 +329,7 @@ class Solitaire {
         this.drawCards();
         this.clearClicked();
       }
+      this.outPutClickedForDebug();
     });
   }
   searchClickedCard(cx, cy) {
@@ -499,3 +513,5 @@ function game() {
   solitaire.drawCards();
 }
 game();
+
+// Todo: refresh(re-game),
